@@ -51,9 +51,9 @@ const saveSvg = async (name, body, title) => {
   return `assets/${name}.png`;
 };
 
-await fs.copyFile(path.join(root, ".codex/demo-table-1440x900.png"), path.join(assetDir, "table.png"));
-await fs.copyFile(path.join(root, ".codex/demo-inspiration-1440x900.png"), path.join(assetDir, "inspiration.png"));
-await fs.copyFile(path.join(root, ".codex/demo-result-1366x768.png"), path.join(assetDir, "result.png"));
+await fs.copyFile(path.join(root, "assets/screenshots/table.png"), path.join(assetDir, "table.png"));
+await fs.copyFile(path.join(root, "assets/screenshots/inspiration.png"), path.join(assetDir, "inspiration.png"));
+await fs.copyFile(path.join(root, "assets/screenshots/result.png"), path.join(assetDir, "result.png"));
 
 const cardPaths = [1, 2, 3, 4, 5, 6].map((n) => path.join(root, `server/uploads/dream-${String(n).padStart(2, "0")}.webp`));
 const cards = await Promise.all(cardPaths.map((p) => sharp(p).resize(230, 320, { fit: "cover" }).png().toBuffer()));

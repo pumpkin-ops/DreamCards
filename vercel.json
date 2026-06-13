@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
+  "outputDirectory": "dist/frontend",
   "functions": {
     "api/index.ts": {
       "maxDuration": 60

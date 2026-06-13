@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import cors from "cors";
 import multer from "multer";
+import { rmSync } from "node:fs";
 import { extname, join } from "node:path";
 import {
   addCardToDeck,
@@ -51,6 +52,7 @@ import {
   submitMultiplayerClue,
   submitMultiplayerVote
 } from "./multiplayer.js";
+import { MAX_CARD_IMAGE_BYTES, moderateCardUpload } from "../../src/moderation/cardModeration.js";
 
 export const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -66,7 +68,21 @@ const storage = multer.diskStorage({
     callback(null, `card-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`);
   }
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_CARD_IMAGE_BYTES,
+    files: 1
+  },
+  fileFilter: (_request, file, callback) => {
+    const decision = moderateCardUpload({ mimeType: file.mimetype, size: 1 });
+    if (decision.status === "allow") {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Unsupported image type"));
+  }
+});
 
 initDatabase();
 
@@ -139,6 +155,19 @@ app.post("/api/cards", upload.single("image"), (request, response, next) => {
     const creatorId = requireAuthenticatedUser(request).id;
     if (!request.file) throw new Error("Image file is required");
     const tags = parseTagsInput(request.body.tags);
+    const moderation = moderateCardUpload({
+      mimeType: request.file.mimetype,
+      size: request.file.size,
+      tags
+    });
+    if (moderation.status !== "allow") {
+      rmSync(request.file.path, { force: true });
+      response.status(422).json({
+        error: "Card upload rejected by moderation preflight",
+        moderation
+      });
+      return;
+    }
 
     const card = createCard(`/uploads/${request.file.filename}`, creatorId, tags);
     response.status(201).json(publicCard(card));
@@ -483,7 +512,7 @@ function parseTagsInput(value: unknown) {
   if (!value) return [];
   if (Array.isArray(value)) return value.map(String);
   return String(value)
-    .split(/[,锛屻€乗s]+/)
+    .split(/[,，。\s]+/)
     .map((tag) => tag.trim())
     .filter(Boolean);
 }

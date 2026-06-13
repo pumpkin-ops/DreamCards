@@ -1,173 +1,216 @@
-# DreamCards 梦境图鉴
+# DreamCards
 
-DreamCards 是一个受联想推理桌游启发的多人卡牌社区 Demo。玩家可以上传图片作品、收藏作品、构筑牌组，并在本地模拟房间或单人 AI 模式中游玩。
+**AI-powered UGC storytelling card game for image-based social deduction.**
 
-## 作品集文档
+DreamCards is an open-source multiplayer narrative card game where players bring image collections, create ambiguous clues, submit misleading cards, vote, and discuss how the same image produced different stories. It combines an AI-assisted UGC pipeline, three card sources (player uploads, AI-generated art, and curated official sets), social storytelling rules, and a moderation-first content model.
 
-- [项目说明与个人职责](./docs/portfolio/README.md)
-- [系统设计文档](./docs/portfolio/SYSTEM_DESIGN.md)
-- [测试与迭代报告](./docs/portfolio/PLAYTEST_REPORT.md)
+[![CI](https://github.com/pumpkin-ops/DreamCards/actions/workflows/ci.yml/badge.svg)](https://github.com/pumpkin-ops/DreamCards/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Demo](https://img.shields.io/badge/demo-live-2f855a)](https://dreamcards-psi.vercel.app)
 
-本项目不使用 Dixit 名字或官方图片，不包含 NFT、区块链、支付系统、复杂账号系统或真实联网匹配。
+[Play the demo](https://dreamcards-psi.vercel.app) · [Read the design docs](docs/portfolio/) · [View the roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-## 技术栈
+![DreamCards table](assets/screenshots/table.png)
 
-- 前端：React + TypeScript + TailwindCSS + Vite
-- 后端：Node.js + Express
-- 数据库：SQLite，使用 Node 24 内置 `node:sqlite`
-- 图片存储：本地 `server/uploads`
-- AI：OpenAI-compatible API，可选 SiliconFlow / OpenRouter / DashScope
+> Demo GIF placeholder: replace `assets/demo.gif` when the next recorded gameplay walkthrough is ready.
 
-## 运行
+## Why DreamCards?
+
+Most image-association games treat cards as a fixed content library. DreamCards treats every image as a persistent community artifact: it can be created, discovered, collected, curated into a Dream Collection, played in matches, and enriched by new clues, interpretations, and stories.
+
+The project explores four difficult open-source problems together:
+
+- **AI UGC system**: multimodal models help generate clues, choose cards, and vote without becoming the source of truth.
+- **Multi-source card generation**: player uploads, AI-generated cards, and curated official cards share one identity and provenance model.
+- **Social storytelling gameplay**: hidden information, asynchronous player state, scoring, replay, and discussion must remain understandable.
+- **Moderation and safety layer**: user-generated images require preflight validation, review states, reporting, provenance, and auditable policy decisions.
+
+## Features
+
+- Four-player storyteller, submission, anonymous voting, reveal, scoring, and next-round flow.
+- Single-player mode with three image-capable AI players.
+- Per-player asynchronous state: one slow AI does not block the player's local feedback.
+- Deterministic local AI fallback when a provider is missing, rate-limited, invalid, or slow.
+- Player-created Dream Collections with ten cards and a persistent creator signature.
+- Discovery, collection, card archive, inspiration drafts, and replay-room concepts.
+- Image-only gameplay: titles, tags, creator identity, and popularity are hidden during deduction.
+- Upload preflight for media type, file size, and blocked metadata.
+- Local SQLite development storage with a server abstraction suitable for future cloud migration.
+- English OSS governance and Chinese portfolio-grade design documentation.
+
+## Gameplay Loop
+
+```text
+Choose Dream Collection
+        |
+Storyteller selects an image and writes a clue
+        |
+Other players submit misleading images
+        |
+Cards are shuffled and shown anonymously
+        |
+Non-storytellers vote (never for their own card)
+        |
+Reveal ownership, vote flow, and score changes
+        |
+Discard, draw back to six, rotate storyteller
+```
+
+The match ends after the current round when a player reaches 30 points.
+
+## Architecture
+
+```text
+┌──────────────────────── frontend/ ────────────────────────┐
+│ React + TypeScript table UI, collection, replay, matching │
+└─────────────────────────────┬──────────────────────────────┘
+                              │ HTTP / JSON
+┌──────────────────────── server/ ──────────────────────────┐
+│ Express API · auth · rooms · SQLite · AI orchestration    │
+└──────────────┬──────────────────────────┬──────────────────┘
+               │                          │
+┌──────────── src/ ────────────┐   ┌──── AI providers ─────┐
+│ Moderation policy            │   │ Vision model calls     │
+│ Deterministic AI fallback    │   │ Timeout + validation   │
+│ Framework-independent rules  │   │ Local fallback         │
+└──────────────┬───────────────┘   └────────────────────────┘
+               │
+┌──────────── tests/ ──────────┐
+│ Node test runner + TSX       │
+└──────────────────────────────┘
+```
+
+See [Architecture](docs/ARCHITECTURE.md), [Moderation](docs/MODERATION.md), and [AI fallback design](docs/AI_FALLBACK.md).
+
+## Repository Structure
+
+| Path | Responsibility |
+| --- | --- |
+| `frontend/` | React user experience, game table, collections, matching, and replay UI |
+| `server/` | Express API, authentication, SQLite access, multiplayer sessions, and AI orchestration |
+| `src/` | Framework-independent moderation and AI fallback policies |
+| `docs/` | Architecture, safety, portfolio, design, and maintenance documentation |
+| `examples/` | Provider configuration and integration examples |
+| `assets/` | Public screenshots and documentation media |
+| `tests/` | Unit tests for shared rules and safety-critical behavior |
+| `.github/` | CI workflows, Issue forms, and pull-request templates |
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 22 or newer
+- npm 10 or newer
+
+### Install and run
 
 ```bash
-cd dreamcards
+git clone https://github.com/pumpkin-ops/DreamCards.git
+cd DreamCards
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-默认地址：
+PowerShell users can replace `cp` with `Copy-Item`.
 
-```text
-前端：http://localhost:5173
-后端：http://localhost:4000
-```
+Open:
 
-也可以分别启动：
+- Frontend: `http://localhost:5173`
+- API health check: `http://localhost:4000/api/health`
 
-```bash
-npm run server:dev
-npm run client:dev
-```
+No model key is required. Without one, DreamCards uses the deterministic local fallback policy.
 
-## 本地账户
+### Optional AI configuration
 
-- 首次打开页面后可直接注册本地账户。
-- 密码使用 Node.js `scrypt` 加盐哈希后保存在 `server/data/dreamcards.sqlite`。
-- 登录会话保存在本地 SQLite；浏览器的 `localStorage` 只保存随机会话令牌，不保存密码。
-- 注册后会自动创建一套 10 张卡牌的“初见梦境”牌组。
-- 当前阶段没有云端同步。更换电脑、删除数据库或清理站点数据后，账户不会自动迁移。
-
-## 多人匹配
-
-- 登录后进入“匹配”，选择一个正好包含 10 张作品的梦境集。
-- 当前匹配人数固定为 4 人；四个不同账号进入队列后会自动创建同一房间。
-- 说书人提交图片和提示，其他三人各出一张图片；说书人不投票，其他玩家不能投自己的图片。
-- 投票完成后服务端统一计分，说书人开启下一轮，系统轮换说书人并把每人手牌补回 6 张。
-- 房间和匹配队列目前保存在 Node.js 进程内存中，服务端重启后进行中的房间会清空。
-- 前端通过短轮询同步房间状态。局域网或云端部署后，不同设备可连接同一个后端参与对局。
-
-## 卡牌身份系统
-
-卡牌没有名称。玩家在游戏过程中只能看到图片，不能看到名称、标签、创作者、编号、收藏数或使用次数。
-
-公开身份由系统自动生成：
-
-```json
-{
-  "cardId": "card_x9ab21",
-  "creatorName": "Alice",
-  "creatorSequence": 7,
-  "imageUrl": "/uploads/card_x9ab21.png"
-}
-```
-
-作品编号规则：
-
-- Alice 上传第一张作品：`Alice#1`
-- Alice 上传第二张作品：`Alice#2`
-- Bob 上传第一张作品：`Bob#1`
-
-`creatorSequence` 按创作者独立递增，用户不能修改。
-
-## 游戏内展示规则
-
-对局中只展示图片：
-
-- 手牌：只显示图片
-- 匿名提交牌：只显示图片
-- 投票阶段：只显示图片
-- 说书人不参与投票
-- 玩家不能投自己的牌
-
-结算后才显示作品身份和历史：
-
-- 作品：`Alice#7`
-- 创作者：`Alice`
-- 首次上传：`2026-06-05`
-- 被使用次数
-- 被收藏次数
-
-## 已实现功能
-
-- 卡牌创建：上传图片，系统自动记录创作者与作品序号
-- 创作者署名：原始创作者和作品序号永久保留
-- 收藏系统：收藏的是作品，不是名称
-- 牌组构筑：每套牌组最多 10 张作品
-- 模拟四人房间：本地合并牌组、洗牌、提交、投票、结算
-- 单人模式：玩家与 3 个 AI 玩家进行一局本地模拟
-- 图鉴系统：统计已发现作品，展示最近发现的作品编号
-- 玩家主页：展示创作数、收藏数、最受欢迎作品
-
-## AI 人机配置
-
-AI 服务统一封装在：
-
-```text
-server/services/aiService.ts
-```
-
-当前三位 AI 通过 GitHub Models 分别使用三个视觉模型：
-
-- `AI_Alice`：OpenAI GPT-4.1 mini
-- `AI_Bob`：Mistral Small 3.1
-- `AI_Carol`：Microsoft Phi-4 Multimodal
-
-这些模型都会直接读取手牌和候选牌图片，而不是依赖前端不可见的标签。GitHub Models 的免费 API 用于开发与实验，额度和可用性可能随 GitHub 政策调整。
-
-配置步骤：
-
-1. 在 GitHub Settings 中创建 fine-grained personal access token。
-2. 为令牌授予 `Models: read` 权限。
-3. 复制环境变量模板：
-
-```bash
-copy .env.example .env
-```
-
-4. 在 `.env` 中填写令牌：
+Configure a GitHub Models token with `Models: read`:
 
 ```env
-GITHUB_MODELS_TOKEN=github_pat_xxx
+GITHUB_MODELS_TOKEN=github_pat_your_token
 GITHUB_MODELS_BASE_URL=https://models.github.ai/inference
-AI_ALICE_MODEL=openai/gpt-4.1-mini
-AI_BOB_MODEL=mistral-ai/mistral-small-2503
-AI_CAROL_MODEL=microsoft/phi-4-multimodal-instruct
+AI_TIMEOUT_MS=9000
 ```
 
-没有 GitHub PAT 也能运行。AI 调用失败、限流、图片解析失败、JSON 解析失败或返回无效 cardId 时，对应玩家会自动 fallback 到本地策略。
+Never commit `.env`. See [examples/ai-provider.env.example](examples/ai-provider.env.example).
 
-## 数据库
+## Development Commands
 
-首次启动后端会自动创建：
-
-```text
-server/data/dreamcards.sqlite
+```bash
+npm run dev       # frontend and server
+npm run lint      # ESLint
+npm test          # unit tests
+npm run build     # TypeScript + production frontend build
+npm run check     # lint + test + build
 ```
 
-主要表：
+## Moderation and Safety
 
-- `users`
-- `cards`
-- `collections`
-- `discoveries`
-- `decks`
-- `deck_cards`
+The current pipeline is intentionally layered:
 
-`cards` 保存后台 AI 标签 `tags`，但公开 API 和前端页面不会展示标签。标签仅用于 AI 出牌、AI 投票和 AI 生成提示词。
+1. Validate upload count, file size, and supported raster MIME type.
+2. Reject blocked metadata before creating a public card record.
+3. Keep card provenance and creator identity outside hidden-information gameplay.
+4. Reserve explicit `review` and `reject` states for future image-model and human review.
+5. Treat model output as untrusted: parse, validate, constrain, timeout, and locally degrade.
 
-## 开发备注
+This is a foundation, not a claim of production-grade content safety. Public deployments must add image-content classification, reporting, appeals, audit logs, and human review. See [MODERATION.md](docs/MODERATION.md).
 
-- 上传图片保存在本机 `server/uploads`
-- SQLite 数据保存在本机 `server/data/dreamcards.sqlite`
-- 如果部署到云服务，应把 SQLite 与上传目录替换为云数据库和云存储，避免实例重启导致数据丢失
+## Roadmap
+
+### MVP: 1–2 weeks
+
+- Stabilize the four-player state machine and 30-point match ending.
+- Expand tests for scoring, self-vote prevention, card uniqueness, and fallback behavior.
+- Complete upload moderation states and contributor-facing architecture docs.
+
+### Beta: 1–2 months
+
+- WebSocket rooms, reconnect snapshots, authoritative server state, and timeout takeover.
+- AI/player behavior telemetry with opt-in privacy controls.
+- Report, review, quarantine, and appeal flows for UGC cards.
+- Provider adapters for image generation and multimodal reasoning.
+
+### Scale: 3–6 months
+
+- Cloud database and object storage adapters.
+- Moderation queues, audit logs, policy versioning, and reviewer tools.
+- Recommendation fairness for new and established creators.
+- Load tests, abuse tests, internationalization, and community governance.
+
+See the detailed [ROADMAP.md](ROADMAP.md).
+
+## Project Status
+
+DreamCards is a playable research/demo project, not a production service.
+
+Known limitations:
+
+- Multiplayer rooms currently use short polling and in-memory process state.
+- Local SQLite and filesystem uploads are not suitable for horizontally scaled hosting.
+- Automated image-content moderation and appeals are not complete.
+- Long-term balance and retention have not been validated with a large player sample.
+
+## Contributing
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) and check issues labeled `good first issue` or `help wanted`.
+
+AI-assisted contributions are welcome, but contributors remain responsible for:
+
+- understanding generated changes;
+- disclosing material AI assistance in the PR;
+- adding tests for behavioral changes;
+- avoiding secrets, copyrighted assets, and unreviewed generated content.
+
+## Security
+
+Do not report vulnerabilities in public issues. Follow [SECURITY.md](SECURITY.md).
+
+## Governance
+
+Decision-making, maintainer responsibilities, and escalation paths are documented in [GOVERNANCE.md](GOVERNANCE.md).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+Game rules and code are original to this repository. The project does not include or distribute Dixit trademarks, official artwork, or proprietary assets.

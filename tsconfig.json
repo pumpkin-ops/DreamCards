@@ -17,5 +17,5 @@
     "jsx": "react-jsx",
     "types": ["node"]
   },
-  "include": ["client/src", "server/src", "server/services", "api", "vite.config.ts"]
+  "include": ["frontend/src", "server/src", "server/services", "src", "tests", "api", "vite.config.ts", "eslint.config.js"]
 }

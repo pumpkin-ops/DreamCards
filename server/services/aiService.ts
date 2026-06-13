@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import OpenAI from "openai";
 import sharp from "sharp";
+import { chooseFallbackCard, generateFallbackClueForCard } from "../../src/ai/fallbackPolicy.js";
 
 export type AiPlayerId = "AI_Alice" | "AI_Bob" | "AI_Carol";
 
@@ -102,7 +103,7 @@ export async function chooseCardByClue(
   }
 
   const fallback = () => {
-    const card = weightedCard(clue, handCards);
+    const card = chooseFallbackCard(clue, handCards) ?? handCards[0];
     return {
       cardId: card.id,
       reason: `本地策略：选择与“${clue}”具有适度联想的图片。`,
@@ -182,9 +183,8 @@ export async function generateClue(
 }
 
 export function generateFallbackClue(storytellerCard: AiCard): GenerateClueResult {
-  const theme = storytellerCard.tags?.find((tag) => tag.trim()) ?? "梦境";
   return {
-    clue: `${theme}的回声`,
+    clue: generateFallbackClueForCard(storytellerCard),
     reason: "本地策略：立即生成一个保留联想空间的短提示。",
     source: "fallback"
   };
@@ -202,7 +202,7 @@ export async function voteCardByClue(
   }
 
   const fallback = () => {
-    const card = weightedCard(clue, validCards);
+    const card = chooseFallbackCard(clue, validCards, [ownCardId]) ?? validCards[0];
     return {
       votedCardId: card.id,
       reason: `本地策略：排除自己的牌后，选择与“${clue}”最接近的图片。`,
@@ -343,20 +343,4 @@ function normalizeId(value: unknown) {
 
 function isValidCardId(cardId: string, cards: AiCard[]) {
   return cards.some((card) => card.id === cardId);
-}
-
-function weightedCard(clue: string, cards: AiCard[]) {
-  const tokens = new Set(
-    clue
-      .toLowerCase()
-      .split(/[\s,，。!！?？、]+/)
-      .filter(Boolean)
-  );
-  const scored = cards.map((card) => {
-    const haystack = `${card.cardId ?? card.id} ${(card.tags ?? []).join(" ")}`.toLowerCase();
-    const score = [...tokens].reduce((sum, token) => sum + (haystack.includes(token) ? 2 : 0), 0) + Math.random();
-    return { card, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  return scored[0]?.card ?? cards[Math.floor(Math.random() * cards.length)];
 }

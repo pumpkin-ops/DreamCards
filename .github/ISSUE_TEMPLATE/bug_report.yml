@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a reproducible gameplay, server, AI, moderation, or UI defect.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, private player content, or unredacted security details.
+        Security vulnerabilities must follow SECURITY.md.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Gameplay rules / scoring
+        - Multiplayer state
+        - AI behavior / fallback
+        - Moderation / upload
+        - Collection / Dream Collection
+        - Frontend / accessibility
+        - Build / deployment
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: What happened? Include the phase, player role, and visible state.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Start a local match...
+        2. Submit...
+        3. Observe...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or deployment
+      placeholder: Commit SHA, branch, or demo URL
+  - type: textarea
+    id: state
+    attributes:
+      label: Relevant state
+      description: Redacted phase, scores, card IDs, logs, or screenshots. Never include tokens.
+  - type: dropdown
+    id: ai
+    attributes:
+      label: Did an external AI provider participate?
+      options:
+        - No / local fallback only
+        - Yes
+        - Unknown
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed secrets and private player content.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

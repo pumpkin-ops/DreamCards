@@ -1,0 +1,58 @@
+name: Feature request
+description: Propose a scoped gameplay, safety, AI, community, or maintainer improvement.
+title: "[Feature]: "
+labels: ["enhancement", "needs-design"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core gameplay
+        - Multiplayer
+        - AI behavior
+        - UGC / moderation
+        - Collections / discovery
+        - Replay / social
+        - Accessibility
+        - Maintainer tooling
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the player or maintainer problem, not only the desired UI.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include rules, constraints, and when information becomes visible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and edge cases
+      description: Consider hidden information, moderation, abuse, provider failure, reconnects, and cost.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: What test, metric, or playtest would show that this works?
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to help implement or test this proposal.
