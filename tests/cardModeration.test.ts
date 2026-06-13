@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MAX_CARD_IMAGE_BYTES, moderateCardUpload } from "../src/moderation/cardModeration.js";
+import { MAX_CARD_IMAGE_BYTES, moderateCardUpload } from "../ai/moderation/cardModeration.js";
 
 test("moderation allows a valid image upload", () => {
   const decision = moderateCardUpload({

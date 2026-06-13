@@ -52,14 +52,20 @@ import {
   submitMultiplayerClue,
   submitMultiplayerVote
 } from "./multiplayer.js";
-import { MAX_CARD_IMAGE_BYTES, moderateCardUpload } from "../../src/moderation/cardModeration.js";
+import { generateCard } from "../../ai/generation/cardGenerationPipeline.js";
+import {
+  MAX_CARD_IMAGE_BYTES,
+  moderateCardUpload,
+  moderateGeneratedContent
+} from "../../ai/moderation/cardModeration.js";
+import { chooseFallbackCard } from "../../ai/fallback/fallbackPolicy.js";
 
 export const app = express();
 const port = Number(process.env.PORT ?? 4000);
 const isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT
 );
-const uploadDir = isServerless ? "/tmp/dreamcards/uploads" : join(process.cwd(), "server", "uploads");
+const uploadDir = isServerless ? "/tmp/dreamcards/uploads" : join(process.cwd(), "backend", "uploads");
 
 const storage = multer.diskStorage({
   destination: uploadDir,
@@ -289,6 +295,43 @@ app.post("/api/ai/vote-card", async (request, response) => {
     String(request.body.ownCardId ?? "")
   );
   response.json({ ok: true, ...result });
+});
+
+app.post("/api/ai/generate-card", async (request, response) => {
+  const mode = ["text", "image", "hybrid"].includes(String(request.body.mode))
+    ? (request.body.mode as "text" | "image" | "hybrid")
+    : "text";
+  const artifact = await generateCard({
+    mode,
+    textPrompt: String(request.body.textPrompt ?? ""),
+    imagePrompt: String(request.body.imagePrompt ?? "")
+  });
+  response
+    .status(artifact.moderation.status === "reject" ? 422 : 200)
+    .json({ ok: artifact.moderation.status !== "reject", artifact });
+});
+
+app.post("/api/ai/moderate", (request, response) => {
+  const moderation = moderateGeneratedContent({
+    prompt: String(request.body.prompt ?? ""),
+    tags: Array.isArray(request.body.tags) ? request.body.tags.map(String) : [],
+    nsfwScore: Number(request.body.nsfwScore ?? 0)
+  });
+  response.status(moderation.status === "reject" ? 422 : 200).json({ ok: moderation.status !== "reject", moderation });
+});
+
+app.post("/api/ai/fallback", (request, response) => {
+  const cards = Array.isArray(request.body.cards) ? request.body.cards : [];
+  const selected = chooseFallbackCard(
+    String(request.body.clue ?? ""),
+    cards,
+    Array.isArray(request.body.excludedCardIds) ? request.body.excludedCardIds.map(String) : []
+  );
+  response.json({
+    ok: true,
+    cardId: selected?.id ?? "",
+    source: "fallback"
+  });
 });
 
 app.post("/api/single-player/start", async (request, response, next) => {

@@ -4,12 +4,12 @@ dist/
 .vercel/
 .env
 
-server/data/*.sqlite
-server/data/*.sqlite-*
-server/uploads/*
-!server/uploads/.gitkeep
-!server/uploads/dream-*.webp
-!server/uploads/dream-fallback-*.svg
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+backend/uploads/*
+!backend/uploads/.gitkeep
+!backend/uploads/dream-*.webp
+!backend/uploads/dream-fallback-*.svg
 
 .codex/curation-profile/
 .codex/gameplay-test-profile/

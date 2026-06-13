@@ -56,9 +56,9 @@ process.env.DREAMCARDS_UPLOAD_DIR = join(outputDir, `simulation-uploads-${simula
 
 async function main() {
   await mkdir(outputDir, { recursive: true });
-  const dbModule = await import("../server/src/db.js");
-  const gameModule = await import("../server/src/singlePlayer.js");
-  const aiModule = await import("../server/services/aiService.js");
+  const dbModule = await import("../backend/src/db.js");
+  const gameModule = await import("../backend/src/singlePlayer.js");
+  const aiModule = await import("../backend/services/aiService.js");
 
   dbModule.initDatabase();
   const activeUserId = 1;

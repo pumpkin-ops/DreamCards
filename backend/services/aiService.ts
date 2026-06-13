@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { join } from "node:path";
 import OpenAI from "openai";
 import sharp from "sharp";
-import { chooseFallbackCard, generateFallbackClueForCard } from "../../src/ai/fallbackPolicy.js";
+import { chooseFallbackCard, generateFallbackClueForCard } from "../../ai/fallback/fallbackPolicy.js";
 
 export type AiPlayerId = "AI_Alice" | "AI_Bob" | "AI_Carol";
 
@@ -321,7 +321,7 @@ async function readImage(imageUrl: string) {
   }
   const relative = imageUrl.replace(/^\/+/, "");
   const localPath = relative.startsWith("uploads/")
-    ? join(process.cwd(), "server", relative)
+    ? join(process.cwd(), "backend", relative)
     : join(process.cwd(), relative);
   return readFile(localPath);
 }

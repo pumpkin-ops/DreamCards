@@ -23,12 +23,13 @@ AI credentials are optional. Tests must pass without external model access.
 ## Repository boundaries
 
 - `frontend/`: user-facing React code.
-- `server/`: transport, persistence, sessions, and provider orchestration.
-- `src/`: framework-independent policies and rules.
+- `backend/`: transport, persistence, sessions, and orchestration.
+- `core/`: framework-independent game rules and state transitions.
+- `ai/`: prompts, provider contracts, fallback, generation, and moderation.
 - `tests/`: deterministic tests that do not call external services.
 - `docs/`: architecture, moderation, gameplay, and maintenance decisions.
 
-Shared rules should be implemented in `src/` when practical so they can be tested without Express or React.
+Shared rules belong in `core/` and must be testable without Express, React, SQLite, or model access. AI policy belongs in `ai/`; provider credentials and transport concerns remain in `backend/`.
 
 ## Pull request requirements
 
@@ -72,6 +73,24 @@ Add deterministic fallback selection tests
 Prevent storyteller identity leakage
 Document moderation review states
 ```
+
+## Feature workflow
+
+1. Open an issue that defines the maintainer or player problem.
+2. Identify affected boundaries: `game-core`, AI, moderation, storage, realtime, or UI.
+3. Record alternatives and rejected approaches for rule, schema, or public API changes.
+4. Agree on acceptance criteria and deterministic tests.
+5. Submit a focused PR with migration and rollback notes.
+6. Update architecture, API, examples, or roadmap files when contracts change.
+
+## Coding conventions
+
+- TypeScript strict mode is required.
+- Prefer pure functions in `core/` and typed dependency injection in `ai/`.
+- Treat external model output and client input as untrusted.
+- Keep hidden-information filtering on the backend.
+- Avoid provider-specific types in public framework contracts.
+- New fallible integrations require timeout, validation, and fallback behavior.
 
 ## Code of conduct and security
 

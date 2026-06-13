@@ -1,4 +1,12 @@
 import { Card, getCards, getDeck, incrementPlayed, markDiscovered, User } from "./db.js";
+import {
+  applyScoreEvents,
+  DEFAULT_SCORE_LIMIT,
+  resolveWinners,
+  scoreRound,
+  transitionRound,
+  validateVote
+} from "../../core/index.js";
 
 type PlayerId = string;
 type MatchPhase = "awaiting_clue" | "awaiting_cards" | "awaiting_vote" | "revealed";
@@ -49,7 +57,7 @@ type MatchRoom = {
 const queue = new Map<number, QueueEntry>();
 const rooms = new Map<string, MatchRoom>();
 const playerRooms = new Map<number, string>();
-const scoreLimit = 30;
+const scoreLimit = DEFAULT_SCORE_LIMIT;
 
 export function joinMatchmaking(user: User, deckId: number) {
   if (playerRooms.has(user.id)) {
@@ -99,7 +107,7 @@ export function submitMultiplayerClue(userId: number, clueInput: string, cardId:
   consumeCard(room, playerId, card);
   room.clue = clue;
   room.submissions = [{ playerId, card, isStoryCard: true }];
-  room.phase = "awaiting_cards";
+  room.phase = transitionRound(room.phase, "awaiting_cards");
   return publicRoom(room, userId);
 }
 
@@ -117,7 +125,7 @@ export function submitMultiplayerCard(userId: number, cardId: number) {
   room.submissions.push({ playerId, card, isStoryCard: false });
   if (room.submissions.length === room.players.length) {
     room.anonymousCards = shuffle(room.submissions);
-    room.phase = "awaiting_vote";
+    room.phase = transitionRound(room.phase, "awaiting_vote");
   }
   return publicRoom(room, userId);
 }
@@ -129,9 +137,25 @@ export function submitMultiplayerVote(userId: number, cardId: number) {
   if (storytellerId(room) === playerId) throw new Error("说书人不参与投票");
   if (room.votes.some((vote) => vote.voterId === playerId)) throw new Error("本轮已经投过票");
 
-  const target = room.anonymousCards.find((submission) => submission.card.id === cardId);
-  if (!target) throw new Error("目标作品不存在");
-  if (target.playerId === playerId) throw new Error("不能投自己的作品");
+  const validation = validateVote({
+    voterId: playerId,
+    storytellerId: storytellerId(room),
+    targetCardId: cardId,
+    submissions: room.anonymousCards.map((submission) => ({
+      playerId: submission.playerId,
+      cardId: submission.card.id
+    })),
+    existingVoterIds: room.votes.map((vote) => vote.voterId)
+  });
+  if (!validation.valid) {
+    const messages = {
+      storyteller_cannot_vote: "说书人不参与投票",
+      duplicate_vote: "本轮已经投过票",
+      target_not_found: "目标作品不存在",
+      self_vote: "不能投自己的作品"
+    };
+    throw new Error(messages[validation.reason]);
+  }
 
   room.votes.push({ voterId: playerId, cardId });
   if (room.votes.length === room.players.length - 1) revealRoom(room);
@@ -147,7 +171,7 @@ export function nextMultiplayerRound(userId: number) {
   refillHands(room);
   room.roundNumber += 1;
   room.storytellerIndex = (room.storytellerIndex + 1) % room.players.length;
-  room.phase = "awaiting_clue";
+  room.phase = transitionRound(room.phase, "awaiting_clue");
   room.clue = "";
   room.submissions = [];
   room.anonymousCards = [];
@@ -205,36 +229,23 @@ function makeRooms() {
 }
 
 function revealRoom(room: MatchRoom) {
-  const story = room.submissions.find((submission) => submission.isStoryCard);
-  if (!story) throw new Error("说书人的作品不存在");
-
-  const correct = room.votes.filter((vote) => vote.cardId === story.card.id);
-  const nonStorytellers = room.players
-    .map((player) => player.id)
-    .filter((id) => id !== storytellerId(room));
-
-  if (correct.length === 0 || correct.length === nonStorytellers.length) {
-    nonStorytellers.forEach((id) => {
-      room.scores[id] += 2;
-    });
-  } else {
-    room.scores[storytellerId(room)] += 3;
-    correct.forEach((vote) => {
-      room.scores[vote.voterId] += 3;
-    });
-  }
-
-  room.votes.forEach((vote) => {
-    const submission = room.submissions.find((item) => item.card.id === vote.cardId);
-    if (submission && !submission.isStoryCard) room.scores[submission.playerId] += 1;
+  const playerIds = room.players.map((player) => player.id);
+  const result = scoreRound({
+    playerIds,
+    storytellerId: storytellerId(room),
+    submissions: room.submissions.map((submission) => ({
+      playerId: submission.playerId,
+      cardId: submission.card.id,
+      isStoryCard: submission.isStoryCard
+    })),
+    votes: room.votes
   });
+  room.scores = applyScoreEvents(room.scores, result.events);
 
-  room.phase = "revealed";
-  const highestScore = Math.max(...Object.values(room.scores));
-  room.gameOver = highestScore >= scoreLimit;
-  room.winnerIds = room.gameOver
-    ? room.players.filter((player) => room.scores[player.id] === highestScore).map((player) => player.id)
-    : [];
+  room.phase = transitionRound(room.phase, "revealed");
+  const outcome = resolveWinners(playerIds, room.scores, scoreLimit);
+  room.gameOver = outcome.gameOver;
+  room.winnerIds = outcome.winnerIds;
   incrementPlayed(room.submissions.map((submission) => submission.card.id));
   room.players.forEach((player) => {
     room.submissions.forEach((submission) => markDiscovered(player.userId, submission.card.id));

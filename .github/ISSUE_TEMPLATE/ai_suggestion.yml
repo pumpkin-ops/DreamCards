@@ -1,0 +1,43 @@
+name: AI system suggestion
+description: Propose a provider, prompt, fallback, evaluation, or moderation improvement.
+title: "[AI]: "
+labels: ["ai", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Model output is untrusted. Proposals must include validation, fallback, safety, and cost considerations.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Maintainer problem
+      description: What failure, maintenance burden, or player experience issue does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed contract
+      description: Describe inputs, outputs, provider assumptions, validation, timeout, and fallback.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and moderation impact
+      description: Explain content risks, privacy implications, and human-review boundaries.
+    validations:
+      required: true
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Evaluation plan
+      description: List deterministic tests, fixtures, metrics, and failure cases.
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Contributor checks
+      options:
+        - label: I will not include API keys, private user content, or copyrighted test assets.
+          required: true

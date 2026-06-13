@@ -4,13 +4,20 @@ import {
   AiPlayerId,
   chooseCardByClue,
   generateFallbackClue,
-  generateClue,
   getAiModelProfiles,
   voteCardByClue
 } from "../services/aiService.js";
+import {
+  applyScoreEvents,
+  DEFAULT_SCORE_LIMIT,
+  resolveWinners,
+  scoreRound,
+  transitionRound,
+  validateVote
+} from "../../core/index.js";
 
 export type SinglePlayerId = "you" | "AI_Alice" | "AI_Bob" | "AI_Carol";
-export const singlePlayerScoreLimit = 30;
+export const singlePlayerScoreLimit = DEFAULT_SCORE_LIMIT;
 
 export type SinglePlayerCard = AiCard & {
   dbId: number;
@@ -164,7 +171,7 @@ export async function submitSinglePlayerClue(sessionId: string, clue: string, ca
     source: "human"
   };
 
-  session.phase = "awaiting_cards";
+  session.phase = transitionRound(session.phase, "awaiting_cards");
   session.clue = clue;
   session.submissions = [submission];
   session.anonymousCards = [];
@@ -191,7 +198,7 @@ export async function submitSinglePlayerPlayerCard(sessionId: string, cardId: st
     source: "human"
   };
 
-  session.phase = "awaiting_cards";
+  session.phase = transitionRound(session.phase, "awaiting_cards");
   session.submissions = [...session.submissions, submission];
   session.anonymousCards = [];
   session.votes = [];
@@ -240,7 +247,7 @@ async function createAiCard(session: SinglePlayerSession, aiId: Exclude<SinglePl
 function finalizeCardsIfReady(session: SinglePlayerSession) {
   if (session.phase !== "awaiting_cards" || session.submissions.length !== playerOrder.length) return;
   pendingAiCards.delete(session.id);
-  session.phase = "awaiting_vote";
+  session.phase = transitionRound(session.phase, "awaiting_vote");
   session.anonymousCards = shuffle(session.submissions);
   session.votes = [];
   sessions.set(session.id, session);
@@ -254,9 +261,17 @@ export async function submitSinglePlayerVote(sessionId: string, votedCardId: str
     if (session.votes.some((vote) => vote.voterId === "you")) {
       return publicSession(session);
     }
-    const ownCardId = session.submissions.find((submission) => submission.playerId === "you")?.card.id;
-    const validVote = session.anonymousCards.some((submission) => submission.card.id === votedCardId) && votedCardId !== ownCardId;
-    if (!validVote) throw new Error("玩家不能投自己的牌，也不能投不存在的牌。");
+    const validation = validateVote({
+      voterId: "you",
+      storytellerId: session.storytellerId,
+      targetCardId: votedCardId,
+      submissions: session.anonymousCards.map((submission) => ({
+        playerId: submission.playerId,
+        cardId: submission.card.id
+      })),
+      existingVoterIds: session.votes.map((vote) => vote.voterId)
+    });
+    if (!validation.valid) throw new Error("玩家不能投自己的牌，也不能投不存在的牌。");
     session.votes.push({
       voterId: "you",
       votedCardId,
@@ -306,7 +321,7 @@ function finalizeVotesIfReady(session: SinglePlayerSession) {
   if (!requiredVoters.every((playerId) => session.votes.some((vote) => vote.voterId === playerId))) return;
 
   pendingAiVotes.delete(session.id);
-  session.phase = "revealed";
+  session.phase = transitionRound(session.phase, "revealed");
   applyScore(session);
   updateGameOutcome(session);
   const playedIds = session.submissions
@@ -340,14 +355,14 @@ export async function nextSinglePlayerRound(sessionId: string) {
   pendingAiVotes.delete(session.id);
 
   if (nextStorytellerId === "you") {
-    session.phase = "awaiting_clue";
+    session.phase = transitionRound(session.phase, "awaiting_clue");
   } else {
     const hand = session.aiHands[nextStorytellerId];
     const storyCard = hand[Math.floor(Math.random() * hand.length)];
     if (!storyCard) throw new Error("AI 说书人没有可用手牌。");
 
     const localClue = generateFallbackClue(storyCard);
-    session.phase = "awaiting_player_card";
+    session.phase = transitionRound(session.phase, "awaiting_player_card");
     session.clue = localClue.clue;
     session.aiClue = localClue;
     session.submissions = [
@@ -416,46 +431,31 @@ function publicSingleCard(card: SinglePlayerCard) {
 }
 
 function applyScore(session: SinglePlayerSession) {
-  const storySubmission = session.submissions.find((submission) => submission.isStoryCard);
-  if (!storySubmission) return;
-
-  const correctVotes = session.votes.filter((vote) => vote.votedCardId === storySubmission.card.id);
-  const nonStorytellerIds = playerOrder.filter((id) => id !== session.storytellerId);
-  const allCorrect = correctVotes.length === nonStorytellerIds.length;
-  const noneCorrect = correctVotes.length === 0;
-  const events: SinglePlayerScoreEvent[] = [];
-
-  if (allCorrect || noneCorrect) {
-    nonStorytellerIds.forEach((playerId) => {
-      events.push({ playerId, points: 2, reason: allCorrect ? "所有非说书人都猜中" : "无人猜中说书人的牌" });
-    });
-  } else {
-    events.push({ playerId: session.storytellerId, points: 3, reason: "部分玩家猜中，说书人得分" });
-    correctVotes.forEach((vote) => events.push({ playerId: vote.voterId, points: 3, reason: "猜中说书人的牌" }));
-  }
-
-  session.votes.forEach((vote) => {
-    const submission = session.submissions.find((item) => item.card.id === vote.votedCardId);
-    if (submission && !submission.isStoryCard) {
-      events.push({ playerId: submission.playerId, points: 1, reason: "自己的牌获得一票" });
-    }
+  const result = scoreRound({
+    playerIds: playerOrder,
+    storytellerId: session.storytellerId,
+    submissions: session.submissions.map((submission) => ({
+      playerId: submission.playerId,
+      cardId: submission.card.id,
+      isStoryCard: submission.isStoryCard
+    })),
+    votes: session.votes.map((vote) => ({ voterId: vote.voterId, cardId: vote.votedCardId }))
   });
-
-  events.forEach((event) => {
-    session.scores[event.playerId] += event.points;
-  });
-  session.scoreEvents = events;
+  session.scores = applyScoreEvents(session.scores, result.events);
+  const reasons = {
+    all_correct: "所有非说书人都猜中",
+    none_correct: "无人猜中说书人的牌",
+    storyteller_partial: "部分玩家猜中，说书人得分",
+    correct_vote: "猜中说书人的牌",
+    decoy_vote: "自己的牌获得一票"
+  };
+  session.scoreEvents = result.events.map((event) => ({ ...event, reason: reasons[event.reason] }));
 }
 
 function updateGameOutcome(session: SinglePlayerSession) {
-  const highestScore = Math.max(...Object.values(session.scores));
-  if (highestScore < singlePlayerScoreLimit) {
-    session.gameOver = false;
-    session.winnerIds = [];
-    return;
-  }
-  session.gameOver = true;
-  session.winnerIds = playerOrder.filter((playerId) => session.scores[playerId] === highestScore);
+  const outcome = resolveWinners(playerOrder, session.scores, singlePlayerScoreLimit);
+  session.gameOver = outcome.gameOver;
+  session.winnerIds = outcome.winnerIds;
 }
 
 function requireSession(sessionId: string) {

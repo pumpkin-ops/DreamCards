@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 export default async function handler(request: Request, response: Response) {
   try {
-    const { default: app } = await import("../server/src/index.js");
+    const { default: app } = await import("../backend/src/index.js");
     return app(request, response);
   } catch (error) {
     console.error(error);

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 const isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT
 );
-const runtimeRoot = isServerless ? "/tmp/dreamcards" : join(process.cwd(), "server");
+const runtimeRoot = isServerless ? "/tmp/dreamcards" : join(process.cwd(), "backend");
 const dbPath = process.env.DREAMCARDS_DB_PATH ?? join(runtimeRoot, "data", "dreamcards.sqlite");
 const uploadDir = process.env.DREAMCARDS_UPLOAD_DIR ?? join(runtimeRoot, "uploads");
 

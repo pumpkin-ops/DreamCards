@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
-    "server:dev": "tsx watch server/src/index.ts",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "tsx watch backend/src/index.ts",
+    "server:dev": "npm run backend:dev",
+    "frontend:dev": "vite --host 0.0.0.0 --port 5173",
     "client:dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -p tsconfig.json && vite build",
-    "lint": "eslint \"frontend/src/**/*.{ts,tsx}\" \"server/**/*.{ts,tsx}\" \"src/**/*.ts\" \"tests/**/*.ts\" \"api/**/*.ts\" vite.config.ts eslint.config.js",
+    "lint": "eslint \"frontend/src/**/*.{ts,tsx}\" \"backend/**/*.{ts,tsx}\" \"core/**/*.ts\" \"ai/**/*.ts\" \"examples/**/*.ts\" \"tests/**/*.ts\" \"api/**/*.ts\" vite.config.ts eslint.config.js",
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run lint && npm test && npm run build",
-    "start": "tsx server/src/index.ts",
+    "start": "tsx backend/src/index.ts",
     "simulate:games": "tsc -p tsconfig.simulation.json && node .simulation-build/scripts/simulate-games.js"
   },
   "dependencies": {

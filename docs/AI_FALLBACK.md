@@ -36,7 +36,7 @@ Fallback occurs for:
 
 ## Deterministic policy
 
-`src/ai/fallbackPolicy.ts`:
+`ai/fallback/fallbackPolicy.ts`:
 
 - scores cards by clue/tag overlap;
 - excludes illegal targets such as the AI player's own card;

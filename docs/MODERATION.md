@@ -14,7 +14,7 @@ The current implementation provides a deterministic preflight layer. It is not a
 
 ## Current preflight
 
-`src/moderation/cardModeration.ts` checks:
+`ai/moderation/cardModeration.ts` checks:
 
 - supported raster MIME type;
 - positive file size within 8 MB;

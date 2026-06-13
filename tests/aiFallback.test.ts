@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chooseFallbackCard, generateFallbackClueForCard } from "../src/ai/fallbackPolicy.js";
+import { chooseFallbackCard, generateFallbackClueForCard } from "../ai/fallback/fallbackPolicy.js";
 
 const cards = [
   { id: "ocean", tags: ["ocean", "lonely"] },

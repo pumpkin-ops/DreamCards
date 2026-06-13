@@ -8,5 +8,5 @@
     "outDir": ".simulation-build",
     "rootDir": "."
   },
-  "include": ["scripts/simulate-games.ts", "server/src", "server/services"]
+  "include": ["scripts/simulate-games.ts", "backend/src", "backend/services", "core", "ai"]
 }
