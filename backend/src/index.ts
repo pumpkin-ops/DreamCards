@@ -1,7 +1,7 @@
 ﻿import express from "express";
 import cors from "cors";
 import multer from "multer";
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { extname, join } from "node:path";
 import {
   addCardToDeck,
@@ -59,6 +59,10 @@ import {
   moderateGeneratedContent
 } from "../../ai/moderation/cardModeration.js";
 import { chooseFallbackCard } from "../../ai/fallback/fallbackPolicy.js";
+import {
+  CardIngestionRejectedError,
+  ingestDreamCardImage
+} from "../services/cardIngestionService.js";
 
 export const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -66,9 +70,12 @@ const isServerless = Boolean(
   process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT
 );
 const uploadDir = isServerless ? "/tmp/dreamcards/uploads" : join(process.cwd(), "backend", "uploads");
+const quarantineDir = isServerless ? "/tmp/dreamcards/quarantine" : join(process.cwd(), "backend", "quarantine");
+mkdirSync(uploadDir, { recursive: true });
+mkdirSync(quarantineDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: uploadDir,
+  destination: quarantineDir,
   filename: (_request, file, callback) => {
     const safeExt = extname(file.originalname).toLowerCase() || ".png";
     callback(null, `card-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`);
@@ -156,7 +163,7 @@ app.get("/api/cards/:id", (request, response) => {
   response.json(publicCard(card));
 });
 
-app.post("/api/cards", upload.single("image"), (request, response, next) => {
+app.post("/api/cards", upload.single("image"), async (request, response, next) => {
   try {
     const creatorId = requireAuthenticatedUser(request).id;
     if (!request.file) throw new Error("Image file is required");
@@ -175,9 +182,32 @@ app.post("/api/cards", upload.single("image"), (request, response, next) => {
       return;
     }
 
-    const card = createCard(`/uploads/${request.file.filename}`, creatorId, tags);
-    response.status(201).json(publicCard(card));
+    const ingestion = await ingestDreamCardImage({
+      sourcePath: request.file.path,
+      mimeType: request.file.mimetype,
+      uploadDir
+    });
+    const card = createCard(ingestion.imageUrl, creatorId, tags, {
+      sourceType: ingestion.sourceType,
+      moderationStatus: ingestion.moderationStatus,
+      generationSource: ingestion.generationSource,
+      styleVersion: ingestion.styleVersion
+    });
+    response.status(201).json({
+      ok: true,
+      card: publicCard(card),
+      pipeline: ingestion
+    });
   } catch (error) {
+    if (request.file) rmSync(request.file.path, { force: true });
+    if (error instanceof CardIngestionRejectedError) {
+      response.status(422).json({
+        error: error.message,
+        review: error.review,
+        stages: error.stages
+      });
+      return;
+    }
     next(error);
   }
 });

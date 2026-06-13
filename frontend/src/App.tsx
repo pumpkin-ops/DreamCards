@@ -28,6 +28,7 @@ import {
   AuthUser,
   Bootstrap,
   Card,
+  CardUploadResult,
   Deck,
   GameRound,
   RoomPlayer,
@@ -230,18 +231,12 @@ export default function App() {
     }
   }
 
-  async function handleCreateCard(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
+  async function handleCreateCard(form: FormData) {
     form.set("creatorId", String(activeUserId));
-    try {
-      await createCard(form);
-      event.currentTarget.reset();
-      setMessage("作品已发布");
-      await refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "创建失败");
-    }
+    const result = await createCard(form);
+    setMessage(result.pipeline.generationSource === "image-model" ? "作品已通过审核并完成 AI 重绘" : "作品已通过审核并完成本地风格化");
+    await refresh();
+    return result;
   }
 
   function startRoom() {
@@ -1261,8 +1256,115 @@ function ReplayRoomView({
   );
 }
 
-function CreateView({ activeUserName, cards, collectionSet, onCreate, onSearch, onSelect, onCollect }: { activeUserName: string; cards: Card[]; collectionSet: Set<number>; onCreate: (event: FormEvent<HTMLFormElement>) => void; onSearch: (query: string) => void; onSelect: (card: Card) => void; onCollect: (cardId: number) => void }) {
-  return <GenericLibrary title="创作" cards={cards} collectionSet={collectionSet} onSelect={onSelect} onCollect={onCollect}><form className="compact-form" onSubmit={onCreate}><span>{activeUserName}</span><input name="image" type="file" accept="image/*" required /><button>发布</button></form><input className="mini-input" placeholder="搜索" onChange={(event) => onSearch(event.target.value)} /></GenericLibrary>;
+function CreateView({
+  activeUserName,
+  cards,
+  collectionSet,
+  onCreate,
+  onSearch,
+  onSelect,
+  onCollect
+}: {
+  activeUserName: string;
+  cards: Card[];
+  collectionSet: Set<number>;
+  onCreate: (form: FormData) => Promise<CardUploadResult>;
+  onSearch: (query: string) => void;
+  onSelect: (card: Card) => void;
+  onCollect: (cardId: number) => void;
+}) {
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const [result, setResult] = useState<CardUploadResult | null>(null);
+
+  function preview(file?: File) {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(file ? URL.createObjectURL(file) : "");
+    setResult(null);
+    setStatus("");
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    setBusy(true);
+    setResult(null);
+    setStatus("正在审核原图...");
+    const stageTimer = window.setTimeout(() => setStatus("正在重绘为 DreamCards 风格..."), 1500);
+    try {
+      const uploadResult = await onCreate(form);
+      setResult(uploadResult);
+      setStatus("二次审核通过，作品已进入梦境库");
+      formElement.reset();
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl("");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "审核或重绘失败");
+    } finally {
+      window.clearTimeout(stageTimer);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="stage creation-studio">
+      <header className="creation-header">
+        <div><span>DREAM WORKSHOP</span><h2>梦境创作室</h2><p>原图不会直接进入牌池。审核通过后，系统会重新绘制并再次审核。</p></div>
+        <input className="mini-input" placeholder="搜索已发布作品" onChange={(event) => onSearch(event.target.value)} />
+      </header>
+      <div className="creation-layout">
+        <form className="creation-form" onSubmit={submit}>
+          <label className={`upload-canvas ${previewUrl ? "has-preview" : ""}`}>
+            {previewUrl ? <img src={previewUrl} alt="待审核原图预览" /> : <div><strong>选择一张图片</strong><span>JPEG / PNG / WebP · 最大 8MB</span></div>}
+            <input
+              name="image"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              required
+              disabled={busy}
+              onChange={(event) => preview(event.target.files?.[0])}
+            />
+          </label>
+          <div className="creation-identity"><span>创作者</span><strong>{activeUserName}</strong><small>署名与首次上传时间将永久保留</small></div>
+          <button className="creation-submit" disabled={busy || !previewUrl}>{busy ? "梦境转化中..." : "提交审核并生成"}</button>
+          {status && <p className={`creation-status ${result ? "success" : ""}`}>{status}</p>}
+          <div className="creation-pipeline">
+            {(result ? result.pipeline.stages.slice(1) : [
+              { id: "source_review", status: "passed", detail: "原图审核" },
+              { id: "style_generation", status: "passed", detail: "风格重绘" },
+              { id: "result_review", status: "passed", detail: "成品复审" },
+              { id: "published", status: "passed", detail: "进入图鉴" }
+            ]).map((stage, index) => (
+              <span className={result ? stage.status : busy && index === 0 ? "active" : ""} key={stage.id}>
+                <b>{String(index + 1).padStart(2, "0")}</b>
+                {result ? stage.id === "source_review" ? "原图审核" : stage.id === "style_generation" ? "风格重绘" : stage.id === "result_review" ? "成品复审" : "进入图鉴" : stage.detail}
+              </span>
+            ))}
+          </div>
+          {result && (
+            <div className="creation-result">
+              <img src={result.card.imageUrl} alt="审核后的 DreamCards 作品" />
+              <div>
+                <strong>转化完成</strong>
+                <span>{result.pipeline.generationSource === "image-model" ? "AI 图生图" : "本地风格化降级"}</span>
+              </div>
+            </div>
+          )}
+        </form>
+        <div className="creation-gallery">
+          {cards.map((card) => (
+            <button className="library-card" key={card.id} onClick={() => onSelect(card)}>
+              <img src={card.imageUrl} alt="" />
+              <span>{cardIdentity(card)}</span>
+              <em onClick={(event) => { event.stopPropagation(); onCollect(card.id); }}>{collectionSet.has(card.id) ? "已收藏" : "收藏"}</em>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function DeckView({ cards, decks, onCreate, onRename, onAdd, onRemove, onSelect }: { cards: Card[]; decks: Deck[]; onCreate: (name: string) => void; onRename: (deckId: number, name: string, description: string) => void; onAdd: (deckId: number, cardId: number) => void; onRemove: (deckId: number, cardId: number) => void; onSelect: (card: Card) => void }) {
@@ -1486,6 +1588,8 @@ function CardDetail({ card, collected, onClose, onCollect, onUncollect }: { card
             <div><span>创建时间</span><strong>{formatArchiveTimestamp(card.createdAt)}</strong></div>
             <div><span>首次发现</span><strong>{formatArchiveTimestamp(card.discoveredAt)}</strong></div>
             <div><span>收藏时间</span><strong>{collected ? formatArchiveTimestamp(card.collectedAt) : "尚未收藏"}</strong></div>
+            <div><span>图像来源</span><strong>{card.sourceType === "user-ai-restyled" ? "玩家上传 · DreamCards 重绘" : card.sourceType === "ai-generated" ? "AI 原生创作" : "官方作品"}</strong></div>
+            {card.styleVersion && <div><span>风格版本</span><strong>{card.styleVersion}</strong></div>}
           </div>
           <button className="archive-collect" onClick={collected ? onUncollect : onCollect}>{collected ? "已收藏 · 移出收藏" : "收藏这件作品"}</button>
           <div className="archive-sections">

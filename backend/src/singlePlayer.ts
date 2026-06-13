@@ -649,7 +649,11 @@ function mockCards(offset: number): Card[] {
     timesPlayed: 0,
     timesCollected: 0,
     timesDiscovered: 0,
-    tags: ["梦境", "幻想"]
+    tags: ["梦境", "幻想"],
+    sourceType: "official",
+    moderationStatus: "approved",
+    generationSource: "none",
+    styleVersion: ""
   };
   });
 }

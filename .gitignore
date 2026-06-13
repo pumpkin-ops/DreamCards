@@ -6,6 +6,7 @@ dist/
 
 backend/data/*.sqlite
 backend/data/*.sqlite-*
+backend/quarantine/
 backend/uploads/*
 !backend/uploads/.gitkeep
 !backend/uploads/dream-*.webp

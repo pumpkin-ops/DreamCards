@@ -33,6 +33,10 @@ export type Card = {
   timesCollected: number;
   timesDiscovered: number;
   tags: string[];
+  sourceType: "official" | "user-ai-restyled" | "ai-generated";
+  moderationStatus: "approved" | "review" | "rejected";
+  generationSource: "none" | "image-model" | "local-style-fallback";
+  styleVersion: string;
   discoveredAt?: string;
   collectedAt?: string;
 };
@@ -79,6 +83,10 @@ export function initDatabase() {
       timesPlayed integer not null default 0,
       timesCollected integer not null default 0,
       tags text not null default '[]',
+      sourceType text not null default 'official',
+      moderationStatus text not null default 'approved',
+      generationSource text not null default 'none',
+      styleVersion text not null default '',
       foreign key (creatorId) references users(id)
     );
 
@@ -144,7 +152,12 @@ export function getCard(id: number): Card | undefined {
   return row ? mapCard(row) : undefined;
 }
 
-export function createCard(imageUrl: string, creatorId: number, tags: string[] = []): Card {
+export function createCard(
+  imageUrl: string,
+  creatorId: number,
+  tags: string[] = [],
+  provenance: Partial<Pick<Card, "sourceType" | "moderationStatus" | "generationSource" | "styleVersion">> = {}
+): Card {
   const user = db.prepare("select * from users where id = ?").get(creatorId) as User | undefined;
   if (!user) throw new Error("Creator not found");
 
@@ -152,20 +165,24 @@ export function createCard(imageUrl: string, creatorId: number, tags: string[] =
   const sequence = nextCreatorSequence(creatorId);
   const publicCardId = makePublicCardId();
   const serializedTags = JSON.stringify(tags);
+  const sourceType = provenance.sourceType ?? "user-ai-restyled";
+  const moderationStatus = provenance.moderationStatus ?? "approved";
+  const generationSource = provenance.generationSource ?? "none";
+  const styleVersion = provenance.styleVersion ?? "";
   const hasLegacyTitle = columnNames("cards").includes("title");
   const result = hasLegacyTitle
     ? db
         .prepare(
-          `insert into cards (title, cardId, imageUrl, creatorId, creatorName, creatorSequence, createdAt, tags)
-           values (?, ?, ?, ?, ?, ?, ?, ?)`
+          `insert into cards (title, cardId, imageUrl, creatorId, creatorName, creatorSequence, createdAt, tags, sourceType, moderationStatus, generationSource, styleVersion)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .run(publicCardId, publicCardId, imageUrl, creatorId, user.username, sequence, createdAt, serializedTags)
+        .run(publicCardId, publicCardId, imageUrl, creatorId, user.username, sequence, createdAt, serializedTags, sourceType, moderationStatus, generationSource, styleVersion)
     : db
         .prepare(
-          `insert into cards (cardId, imageUrl, creatorId, creatorName, creatorSequence, createdAt, tags)
-           values (?, ?, ?, ?, ?, ?, ?)`
+          `insert into cards (cardId, imageUrl, creatorId, creatorName, creatorSequence, createdAt, tags, sourceType, moderationStatus, generationSource, styleVersion)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        .run(publicCardId, imageUrl, creatorId, user.username, sequence, createdAt, serializedTags);
+        .run(publicCardId, imageUrl, creatorId, user.username, sequence, createdAt, serializedTags, sourceType, moderationStatus, generationSource, styleVersion);
 
   markDiscovered(creatorId, Number(result.lastInsertRowid));
   return getCard(Number(result.lastInsertRowid))!;
@@ -324,6 +341,10 @@ function migrateCards() {
   if (!cardColumns.includes("cardId")) db.exec("alter table cards add column cardId text");
   if (!cardColumns.includes("creatorSequence")) db.exec("alter table cards add column creatorSequence integer");
   if (!cardColumns.includes("tags")) db.exec("alter table cards add column tags text");
+  if (!cardColumns.includes("sourceType")) db.exec("alter table cards add column sourceType text not null default 'official'");
+  if (!cardColumns.includes("moderationStatus")) db.exec("alter table cards add column moderationStatus text not null default 'approved'");
+  if (!cardColumns.includes("generationSource")) db.exec("alter table cards add column generationSource text not null default 'none'");
+  if (!cardColumns.includes("styleVersion")) db.exec("alter table cards add column styleVersion text not null default ''");
   if (!collectionColumns.includes("collectedAt")) db.exec("alter table collections add column collectedAt text");
 
   const refreshedCardColumns = columnNames("cards");
@@ -426,7 +447,7 @@ function refreshSeedImages() {
 }
 
 function cardSelect(alias: string) {
-  return `select ${alias}.id, ${alias}.cardId, ${alias}.imageUrl, ${alias}.creatorId, ${alias}.creatorName, ${alias}.creatorSequence, ${alias}.createdAt, ${alias}.timesPlayed, ${alias}.timesCollected, (select count(*) from discoveries where discoveries.cardId = ${alias}.id) as timesDiscovered, ${alias}.tags`;
+  return `select ${alias}.id, ${alias}.cardId, ${alias}.imageUrl, ${alias}.creatorId, ${alias}.creatorName, ${alias}.creatorSequence, ${alias}.createdAt, ${alias}.timesPlayed, ${alias}.timesCollected, (select count(*) from discoveries where discoveries.cardId = ${alias}.id) as timesDiscovered, ${alias}.tags, ${alias}.sourceType, ${alias}.moderationStatus, ${alias}.generationSource, ${alias}.styleVersion`;
 }
 
 function mapCards(rows: DbCard[]) {

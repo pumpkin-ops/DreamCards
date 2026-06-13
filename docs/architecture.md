@@ -103,6 +103,17 @@ One slow AI or player may delay phase completion, but must not delay acknowledge
 4. Invalid or failed output uses deterministic fallback.
 5. Backend commits the result exactly like a human command.
 
+### Player Upload
+
+1. Multer writes the source image to a non-public quarantine directory.
+2. File preflight validates supported format and size.
+3. The vision moderation adapter reviews the source image.
+4. The image-edit adapter redraws the source with the versioned DreamCards style prompt.
+5. The generated WebP passes a second visual review.
+6. Only then does the backend create the permanent card identity and delete the temporary source.
+
+The public card stores generation provenance and style version, but never exposes the original upload path.
+
 ## Card Lifecycle
 
 ```text

@@ -91,7 +91,34 @@ Multipart fields:
 - `image`: JPEG, PNG, or WebP, maximum 8 MB.
 - `tags`: optional backend-only metadata.
 
-The upload is validated before a card record is created. Future versions will persist moderation status and quarantine review content.
+The upload is not published directly. It passes source review, DreamCards-style image-to-image generation, result review, and only then creates a card record.
+
+Successful response:
+
+```json
+{
+  "ok": true,
+  "card": {
+    "imageUrl": "/uploads/dreamcard-xxx.webp",
+    "sourceType": "user-ai-restyled",
+    "moderationStatus": "approved",
+    "generationSource": "image-model",
+    "styleVersion": "dreamcards-v1"
+  },
+  "pipeline": {
+    "generationSource": "image-model",
+    "stages": [
+      { "id": "preflight", "status": "passed" },
+      { "id": "source_review", "status": "passed" },
+      { "id": "style_generation", "status": "passed" },
+      { "id": "result_review", "status": "passed" },
+      { "id": "published", "status": "passed" }
+    ]
+  }
+}
+```
+
+The original temporary file is deleted whether the pipeline succeeds or fails.
 
 ## Single Player
 

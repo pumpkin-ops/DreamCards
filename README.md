@@ -24,6 +24,7 @@ DreamCards is not only a playable image-association game. It is an open framewor
 - **Multimodal AI players** for clue generation, card selection, and voting.
 - **Deterministic fallback behavior** when a model times out, rate-limits, fails validation, or is not configured.
 - **Moderation-first boundaries** for upload validation, prompt filtering, risk scoring, review, and rejection.
+- **Review-before-publish uploads** that redraw accepted source images into the versioned DreamCards visual style and review the result again.
 - **Single-player and multiplayer orchestration** using the same framework-independent game rules.
 
 ## Architecture
@@ -96,6 +97,20 @@ npm run dev
 - Live demo: https://dreamcards-psi.vercel.app
 
 No model key is required. Without a configured provider, the framework uses deterministic local behavior.
+
+### Upload review and DreamCards restyling
+
+Visual moderation uses `GITHUB_MODELS_TOKEN` and `IMAGE_REVIEW_MODEL`. Optional image-to-image generation uses an OpenAI-compatible Images API:
+
+```env
+IMAGE_API_KEY=your_image_provider_key
+IMAGE_BASE_URL=https://api.openai.com/v1
+IMAGE_MODEL=gpt-image-1
+IMAGE_REVIEW_MODEL=openai/gpt-4.1-mini
+IMAGE_TIMEOUT_MS=45000
+```
+
+Accepted uploads are never published directly. The source is reviewed in a private quarantine directory, redrawn, reviewed again, and then saved as a new WebP card. If image generation is unavailable, the local Sharp fallback keeps the workflow usable but is explicitly recorded as `local-style-fallback`.
 
 ### Verify a contribution
 

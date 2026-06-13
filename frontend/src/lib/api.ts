@@ -1,4 +1,4 @@
-import { AuthUser, Bootstrap, Card, MatchmakingState, MultiplayerRoom, SinglePlayerSession } from "./types";
+import { AuthUser, Bootstrap, CardUploadResult, MatchmakingState, MultiplayerRoom, SinglePlayerSession } from "./types";
 
 const authTokenKey = "dreamcards-auth-token";
 const accountCredentialKey = "dreamcards-account-credential";
@@ -66,7 +66,7 @@ export function fetchBootstrap(_userId?: number) {
 }
 
 export function createCard(form: FormData) {
-  return request<Card>("/api/cards", { method: "POST", body: form });
+  return request<CardUploadResult>("/api/cards", { method: "POST", body: form });
 }
 
 export function collectCard(userId: number, cardId: number) {

@@ -20,8 +20,30 @@ export type Card = {
   timesPlayed: number;
   timesCollected: number;
   timesDiscovered: number;
+  sourceType: "official" | "user-ai-restyled" | "ai-generated";
+  moderationStatus: "approved" | "review" | "rejected";
+  generationSource: "none" | "image-model" | "local-style-fallback";
+  styleVersion: string;
   discoveredAt?: string;
   collectedAt?: string;
+};
+
+export type CardPipelineStage = {
+  id: "preflight" | "source_review" | "style_generation" | "result_review" | "published";
+  status: "passed" | "fallback" | "rejected";
+  detail: string;
+};
+
+export type CardUploadResult = {
+  ok: boolean;
+  card: Card;
+  pipeline: {
+    imageUrl: string;
+    generationSource: "image-model" | "local-style-fallback";
+    moderationStatus: "approved";
+    styleVersion: string;
+    stages: CardPipelineStage[];
+  };
 };
 
 export type Deck = {

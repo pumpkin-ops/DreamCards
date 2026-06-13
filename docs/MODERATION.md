@@ -23,6 +23,21 @@ The current implementation provides a deterministic preflight layer. It is not a
 
 Rejected metadata uploads are removed before a card record is created.
 
+## Upload-to-card pipeline
+
+Player uploads now follow a two-review process:
+
+1. File preflight validates MIME type, size, and minimum dimensions.
+2. A configured vision model reviews the source image. Production fails closed when visual review is unavailable.
+3. An OpenAI-compatible image edit provider redraws the source with the versioned DreamCards style prompt.
+4. If no image provider is configured or the request fails, Sharp produces a deterministic presentation-safe local style fallback.
+5. The generated result is reviewed again.
+6. Only an approved generated result is stored as a public card. The temporary source upload is deleted.
+
+`IMAGE_ALLOW_LOCAL_REVIEW=true` exists only for offline development. It accepts dimension-valid images with an explicit low-confidence marker and should not be enabled on a public deployment.
+
+The database records `sourceType`, `moderationStatus`, `generationSource`, and `styleVersion`. The original upload is not exposed through the game or archive API.
+
 ## Target pipeline
 
 ```text
