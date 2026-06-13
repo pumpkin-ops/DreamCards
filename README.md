@@ -5,7 +5,7 @@
 DreamCards is not only a playable image-association game. It is an open framework for building narrative systems in which official art, player uploads, and AI-generated cards enter the same governed content lifecycle, then become prompts for hidden-information play, voting, replay, collection, and community storytelling.
 
 [![CI](https://github.com/pumpkin-ops/DreamCards/actions/workflows/ci.yml/badge.svg)](https://github.com/pumpkin-ops/DreamCards/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Demo](https://img.shields.io/badge/demo-live-2f855a)](https://dreamcards-psi.vercel.app)
 
 [Live Demo](https://dreamcards-psi.vercel.app) · [Architecture](docs/architecture.md) · [API](docs/api.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
@@ -169,4 +169,4 @@ DreamCards is a playable framework prototype. SQLite, filesystem uploads, in-mem
 
 ## License
 
-[Apache License 2.0](LICENSE). DreamCards contains original rules and assets and does not distribute Dixit trademarks or official artwork.
+[MIT License](LICENSE). DreamCards contains original rules and assets and does not distribute Dixit trademarks or official artwork.
