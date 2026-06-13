@@ -1,0 +1,4 @@
+interface:
+  display_name: "DreamCards ÅÆ×ÀÌåÑé"
+  short_description: "Preserve immersive table layout and image-first play"
+  default_prompt: "Use $dreamcards-table-experience to review and implement this DreamCards game-table UI change."

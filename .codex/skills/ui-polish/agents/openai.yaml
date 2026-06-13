@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI Polish"
+  short_description: "Review interaction layout motion responsiveness and usability"
+  default_prompt: "Use $ui-polish to inspect and improve this DreamCards interaction or layout."

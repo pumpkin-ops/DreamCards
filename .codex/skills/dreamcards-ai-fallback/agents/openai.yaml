@@ -1,0 +1,4 @@
+interface:
+  display_name: "DreamCards AI ÈÝ´í"
+  short_description: "Keep compatible model calls validated and locally recoverable"
+  default_prompt: "Use $dreamcards-ai-fallback to implement or audit this DreamCards AI-player behavior."

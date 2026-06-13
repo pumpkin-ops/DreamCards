@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="night" x2="0" y2="1"><stop stop-color="#0b1020"/><stop offset=".6" stop-color="#263a4a"/><stop offset="1" stop-color="#d9dde0"/></linearGradient>
+    <filter id="mist"><feGaussianBlur stdDeviation="24"/></filter>
+  </defs>
+  <rect width="900" height="1200" fill="url(#night)"/>
+  <circle cx="450" cy="240" r="125" fill="#ede6cf"/>
+  <circle cx="500" cy="210" r="125" fill="#11182a"/>
+  <g fill="#101721">
+    <path d="M40 900L175 420 295 900Z"/><path d="M160 910L335 315 470 910Z"/><path d="M520 910L690 350 825 910Z"/><path d="M650 930L820 470 930 930Z"/>
+  </g>
+  <ellipse cx="450" cy="930" rx="430" ry="150" fill="#fff" opacity=".22" filter="url(#mist)"/>
+  <rect x="338" y="535" width="224" height="370" rx="8" fill="#8c2430" stroke="#f0a576" stroke-width="12"/>
+  <rect x="378" y="585" width="144" height="320" fill="#1b1118"/>
+  <path d="M450 905L410 1200H490Z" fill="#ec9a6e" opacity=".42"/>
+  <circle cx="495" cy="742" r="9" fill="#f6d89b"/>
+</svg>

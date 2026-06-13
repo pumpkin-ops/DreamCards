@@ -1,0 +1,4 @@
+interface:
+  display_name: "DreamCards ¿¨ÅÆ¿É¼ûÐÔ"
+  short_description: "Enforce image-only play and metadata visibility rules"
+  default_prompt: "Use $dreamcards-card-visibility to check card data and UI visibility boundaries for this change."

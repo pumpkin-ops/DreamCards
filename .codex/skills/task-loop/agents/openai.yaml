@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Loop"
+  short_description: "Plan implement verify repair and update the project roadmap"
+  default_prompt: "Use $task-loop to advance the highest-value DreamCards demo task through implementation and verification."

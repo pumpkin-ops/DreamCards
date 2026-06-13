@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "isolatedModules": false,
+    "outDir": ".simulation-build",
+    "rootDir": "."
+  },
+  "include": ["scripts/simulate-games.ts", "server/src", "server/services"]
+}

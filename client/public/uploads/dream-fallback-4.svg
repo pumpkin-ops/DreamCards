@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+  <defs>
+    <linearGradient id="dusk" x2="0" y2="1"><stop stop-color="#11172b"/><stop offset=".55" stop-color="#3e4468"/><stop offset="1" stop-color="#d09270"/></linearGradient>
+    <filter id="shine"><feGaussianBlur stdDeviation="14"/></filter>
+  </defs>
+  <rect width="900" height="1200" fill="url(#dusk)"/>
+  <circle cx="650" cy="275" r="125" fill="#f4e4b2"/>
+  <path d="M0 880Q190 750 370 850T900 790V1200H0Z" fill="#182226"/>
+  <g fill="#d48b5b">
+    <rect x="280" y="760" width="90" height="120"/><rect x="390" y="720" width="105" height="160"/><rect x="520" y="770" width="80" height="110"/>
+  </g>
+  <g fill="#f7d886"><rect x="305" y="795" width="18" height="26"/><rect x="420" y="760" width="20" height="30"/><rect x="550" y="805" width="17" height="24"/></g>
+  <path d="M155 740Q130 420 355 280Q545 150 735 330Q610 300 535 430Q760 410 790 650Q620 520 485 590Q390 760 155 740Z" fill="#bfe7e2" opacity=".26" stroke="#d8ffff" stroke-width="10"/>
+  <path d="M190 700Q270 520 435 495Q570 475 690 580Q520 570 470 690Q330 790 190 700Z" fill="#e8ffff" opacity=".18" filter="url(#shine)"/>
+  <circle cx="292" cy="405" r="17" fill="#f8e8ad"/>
+</svg>

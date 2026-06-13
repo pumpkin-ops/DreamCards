@@ -1,0 +1,4 @@
+interface:
+  display_name: "Art Director"
+  short_description: "Review atmosphere cohesion materials lighting and card focus"
+  default_prompt: "Use $art-director to review the current DreamCards screen and identify the highest-impact visual improvements."

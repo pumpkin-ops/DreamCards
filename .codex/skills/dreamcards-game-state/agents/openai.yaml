@@ -1,0 +1,4 @@
+interface:
+  display_name: "DreamCards ¶Ô¾Ö×´Ì¬"
+  short_description: "Keep round rules hands voting scoring and transitions consistent"
+  default_prompt: "Use $dreamcards-game-state to implement or review this DreamCards gameplay-state change."

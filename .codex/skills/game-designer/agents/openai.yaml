@@ -1,0 +1,4 @@
+interface:
+  display_name: "Game Designer"
+  short_description: "Review rules balance information leakage and round pacing"
+  default_prompt: "Use $game-designer to review this DreamCards gameplay change for correctness and player experience."
