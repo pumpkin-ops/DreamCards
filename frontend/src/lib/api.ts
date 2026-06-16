@@ -49,6 +49,10 @@ export function loginUser(username: string, password: string) {
   });
 }
 
+export function enterDemo() {
+  return request<{ ok: boolean; user: AuthUser; token: string }>("/api/auth/demo", { method: "POST" });
+}
+
 export function setAccountCredential(credential: string | undefined) {
   if (credential) localStorage.setItem(accountCredentialKey, credential);
 }

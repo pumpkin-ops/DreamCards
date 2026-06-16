@@ -29,6 +29,7 @@ import {
 import {
   authenticateToken,
   extractBearerToken,
+  loginDemoUser,
   loginLocalUser,
   registerLocalUser,
   revokeToken
@@ -130,6 +131,17 @@ app.post("/api/auth/login", (request, response, next) => {
         String(request.body.password ?? ""),
         String(request.body.accountCredential ?? "")
       )
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/demo", (_request, response, next) => {
+  try {
+    response.json({
+      ok: true,
+      ...loginDemoUser()
     });
   } catch (error) {
     next(error);

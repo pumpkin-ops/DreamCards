@@ -74,8 +74,8 @@
     @apply max-w-32 truncate text-sm text-stone-100;
   }
 
-  .account-menu button {
-    @apply rounded-full px-2 py-1 text-[11px] font-bold text-stone-500 transition hover:bg-white/10 hover:text-stone-200;
+  .account-menu span {
+    @apply rounded-full bg-white/10 px-2 py-1 text-[11px] font-bold text-stone-400;
   }
 
   .auth-loading {

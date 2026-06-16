@@ -4,18 +4,15 @@ import {
   collectCard,
   createCard,
   createDeck,
+  enterDemo,
   fetchAuthSession,
   fetchBootstrap,
   fetchSinglePlayerSession,
   hasAuthToken,
-  loginUser,
-  logoutUser,
   markPlayed,
   nextSinglePlayerRound,
-  registerUser,
   removeCardFromDeck,
   renameDeck,
-  setAccountCredential,
   setAuthToken,
   startSinglePlayer,
   submitSinglePlayerClue,
@@ -105,6 +102,7 @@ export default function App() {
   const [activeUserId, setActiveUserId] = useState(0);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [entryError, setEntryError] = useState("");
   const [view, setView] = useState<View>("single");
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
@@ -160,46 +158,28 @@ export default function App() {
   }, [singleSession?.id, singleSession?.phase]);
 
   async function restoreSession() {
-    if (!hasAuthToken()) {
-      setAuthReady(true);
-      return;
-    }
-
     try {
-      const session = await fetchAuthSession();
-      setAuthUser(session.user);
-      setActiveUserId(session.user.id);
-      await refresh(session.user.id);
+      if (hasAuthToken()) {
+        try {
+          const session = await fetchAuthSession();
+          setAuthUser(session.user);
+          setActiveUserId(session.user.id);
+          await refresh(session.user.id);
+          return;
+        } catch {
+          setAuthToken(null);
+        }
+      }
+
+      const demoSession = await enterDemo();
+      setAuthToken(demoSession.token);
+      setAuthUser(demoSession.user);
+      setActiveUserId(demoSession.user.id);
+      await refresh(demoSession.user.id);
     } catch {
-      setAuthToken(null);
+      setEntryError("暂时无法进入试玩牌桌，请稍后刷新重试。");
     } finally {
       setAuthReady(true);
-    }
-  }
-
-  async function handleAuth(mode: "login" | "register", username: string, password: string) {
-    const response = mode === "login"
-      ? await loginUser(username, password)
-      : await registerUser(username, password);
-    setAuthToken(response.token);
-    setAccountCredential(response.accountCredential);
-    setAuthUser(response.user);
-    setActiveUserId(response.user.id);
-    await refresh(response.user.id);
-  }
-
-  async function handleLogout() {
-    try {
-      await logoutUser();
-    } finally {
-      setAuthToken(null);
-      setAuthUser(null);
-      setData(null);
-      setActiveUserId(0);
-      setSingleSession(null);
-      setRoundMemories([]);
-      setMessage("");
-      setView("single");
     }
   }
 
@@ -327,7 +307,7 @@ export default function App() {
   }, [data, query]);
 
   if (!authReady) return <div className="auth-loading">正在唤醒梦境牌桌...</div>;
-  if (!authUser) return <AuthView onSubmit={handleAuth} />;
+  if (!authUser) return <div className="auth-loading">{entryError || "正在进入试玩牌桌..."}</div>;
   if (!data) return <div className="auth-loading">正在载入 DreamCards...</div>;
 
   const collectionSet = new Set(data.collectionIds);
@@ -350,7 +330,7 @@ export default function App() {
           <div className="account-menu">
             <img src={authUser.avatar} alt="" />
             <strong>{authUser.username}</strong>
-            <button onClick={handleLogout}>退出</button>
+            <span>试玩模式</span>
           </div>
         </div>
       </header>
@@ -437,83 +417,6 @@ export default function App() {
         />
       )}
     </div>
-  );
-}
-
-function AuthView({ onSubmit }: { onSubmit: (mode: "login" | "register", username: string, password: string) => Promise<void> }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const username = String(form.get("username") ?? "");
-    const password = String(form.get("password") ?? "");
-    const confirmation = String(form.get("confirmation") ?? "");
-
-    if (mode === "register" && password !== confirmation) {
-      setError("两次输入的密码不一致");
-      return;
-    }
-
-    setBusy(true);
-    setError("");
-    try {
-      await onSubmit(mode, username, password);
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "暂时无法进入梦境");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="auth-stage">
-      <div className="auth-art" aria-hidden="true">
-        {["/uploads/dream-01.webp", "/uploads/dream-15.webp", "/uploads/dream-28.webp"].map((imageUrl, index) => (
-          <img src={imageUrl} alt="" key={imageUrl} style={{ "--auth-card-index": index } as CSSProperties} />
-        ))}
-      </div>
-      <section className="auth-panel">
-        <div className="auth-brand">
-          <span>DC</span>
-          <div>
-            <strong>DreamCards</strong>
-            <small>梦境图鉴</small>
-          </div>
-        </div>
-        <div className="auth-copy">
-          <p>{mode === "login" ? "欢迎回到牌桌" : "建立你的梦境身份"}</p>
-          <h1>{mode === "login" ? "继续未完的故事" : "从第一张图开始"}</h1>
-        </div>
-        <div className="auth-tabs">
-          <button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>登录</button>
-          <button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>注册</button>
-        </div>
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label>
-            <span>昵称</span>
-            <input name="username" autoComplete="username" minLength={2} maxLength={20} placeholder="你的梦境署名" required />
-          </label>
-          <label>
-            <span>密码</span>
-            <input name="password" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={6} maxLength={72} placeholder="至少 6 个字符" required />
-          </label>
-          {mode === "register" && (
-            <label>
-              <span>确认密码</span>
-              <input name="confirmation" type="password" autoComplete="new-password" minLength={6} maxLength={72} placeholder="再次输入密码" required />
-            </label>
-          )}
-          {error && <p className="auth-error">{error}</p>}
-          <button className="auth-submit" disabled={busy}>
-            {busy ? "正在进入..." : mode === "login" ? "进入牌桌" : "创建身份"}
-          </button>
-        </form>
-        <p className="auth-local-note">线上 Demo 账户仅保存在当前浏览器；清理站点数据后需要重新注册。</p>
-      </section>
-    </main>
   );
 }
 

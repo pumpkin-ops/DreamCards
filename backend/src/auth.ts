@@ -11,6 +11,16 @@ export type AuthUser = User & {
   createdAt: string;
 };
 
+export function loginDemoUser() {
+  const username = normalizeUsername(process.env.DEMO_USERNAME || "DemoPlayer");
+  const user = ensureServerlessUser(username);
+
+  return {
+    user,
+    token: isServerless ? createPortableSession(user.username) : createSession(user.id)
+  };
+}
+
 export function registerLocalUser(usernameInput: string, password: string) {
   const username = normalizeUsername(usernameInput);
   validatePassword(password);
