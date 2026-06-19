@@ -1,6 +1,7 @@
 import { CSSProperties, DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   addCardToDeck,
+  ApiError,
   collectCard,
   createCard,
   createDeck,
@@ -25,6 +26,7 @@ import {
   AuthUser,
   Bootstrap,
   Card,
+  CardPipelineStage,
   CardUploadResult,
   Deck,
   GameRound,
@@ -1180,11 +1182,13 @@ function CreateView({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [result, setResult] = useState<CardUploadResult | null>(null);
+  const [failedStages, setFailedStages] = useState<CardPipelineStage[]>([]);
 
   function preview(file?: File) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(file ? URL.createObjectURL(file) : "");
     setResult(null);
+    setFailedStages([]);
     setStatus("");
   }
 
@@ -1194,8 +1198,9 @@ function CreateView({
     const form = new FormData(formElement);
     setBusy(true);
     setResult(null);
+    setFailedStages([]);
     setStatus("正在审核原图...");
-    const stageTimer = window.setTimeout(() => setStatus("正在重绘为 DreamCards 风格..."), 1500);
+    const stageTimer = window.setTimeout(() => setStatus("正在等待审核与梦境转化结果..."), 1500);
     try {
       const uploadResult = await onCreate(form);
       setResult(uploadResult);
@@ -1204,7 +1209,17 @@ function CreateView({
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl("");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "审核或重绘失败");
+      const body = error instanceof ApiError ? error.body as Partial<{
+        stages: CardPipelineStage[];
+        review: { reason?: string };
+      }> : undefined;
+      const stages = Array.isArray(body?.stages) ? body.stages : [];
+      const rejectedStage = stages.find((stage) => stage.status === "rejected");
+      setFailedStages(stages);
+      setStatus([
+        error instanceof Error ? error.message : "审核或重绘失败",
+        rejectedStage?.detail ?? body?.review?.reason
+      ].filter(Boolean).join("："));
     } finally {
       window.clearTimeout(stageTimer);
       setBusy(false);
@@ -1234,15 +1249,15 @@ function CreateView({
           <button className="creation-submit" disabled={busy || !previewUrl}>{busy ? "梦境转化中..." : "提交审核并生成"}</button>
           {status && <p className={`creation-status ${result ? "success" : ""}`}>{status}</p>}
           <div className="creation-pipeline">
-            {(result ? result.pipeline.stages.slice(1) : [
+            {(result ? result.pipeline.stages.slice(1) : failedStages.length > 0 ? failedStages.slice(1) : [
               { id: "source_review", status: "passed", detail: "原图审核" },
               { id: "style_generation", status: "passed", detail: "风格重绘" },
               { id: "result_review", status: "passed", detail: "成品复审" },
               { id: "published", status: "passed", detail: "进入图鉴" }
             ]).map((stage, index) => (
-              <span className={result ? stage.status : busy && index === 0 ? "active" : ""} key={stage.id}>
+              <span className={result || failedStages.length > 0 ? stage.status : busy && index === 0 ? "active" : ""} key={stage.id}>
                 <b>{String(index + 1).padStart(2, "0")}</b>
-                {result ? stage.id === "source_review" ? "原图审核" : stage.id === "style_generation" ? "风格重绘" : stage.id === "result_review" ? "成品复审" : "进入图鉴" : stage.detail}
+                {result || failedStages.length > 0 ? stage.id === "source_review" ? "原图审核" : stage.id === "style_generation" ? "风格重绘" : stage.id === "result_review" ? "成品复审" : "进入图鉴" : stage.detail}
               </span>
             ))}
           </div>

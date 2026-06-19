@@ -3,6 +3,16 @@ import { AuthUser, Bootstrap, CardUploadResult, MatchmakingState, MultiplayerRoo
 const authTokenKey = "dreamcards-auth-token";
 const accountCredentialKey = "dreamcards-account-credential";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body: unknown
+  ) {
+    super(message);
+  }
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem(authTokenKey);
   const response = await fetch(url, {
@@ -16,7 +26,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "请求失败");
+    throw new ApiError(body.error ?? "请求失败", response.status, body);
   }
 
   return response.json() as Promise<T>;

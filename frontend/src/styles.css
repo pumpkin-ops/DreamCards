@@ -2753,6 +2753,16 @@
   color: #ddb778;
 }
 
+.creation-pipeline span.rejected {
+  color: #f19a9a;
+}
+
+.creation-pipeline span.rejected b {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecaca;
+}
+
 .creation-result {
   display: flex;
   align-items: center;
