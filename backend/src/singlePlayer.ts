@@ -460,7 +460,7 @@ function updateGameOutcome(session: SinglePlayerSession) {
 
 function requireSession(sessionId: string) {
   const session = sessions.get(sessionId);
-  if (!session) throw new Error("Single-player session not found");
+  if (!session) throw new Error("对局会话已失效，请重新开始一局。");
   return session;
 }
 

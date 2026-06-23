@@ -13,16 +13,30 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
+async function request<T>(url: string, options?: RequestInit, timeoutMs = 20000): Promise<T> {
   const token = localStorage.getItem(authTokenKey);
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...(options?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: options?.signal ?? controller.signal,
+      headers: {
+        ...(options?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options?.headers
+      }
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("请求超时，请检查网络后重试");
     }
-  });
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -80,7 +94,7 @@ export function fetchBootstrap(_userId?: number) {
 }
 
 export function createCard(form: FormData) {
-  return request<CardUploadResult>("/api/cards", { method: "POST", body: form });
+  return request<CardUploadResult>("/api/cards", { method: "POST", body: form }, 70000);
 }
 
 export function collectCard(userId: number, cardId: number) {
@@ -175,7 +189,7 @@ export function nextSinglePlayerRound(sessionId: string) {
   return request<{ ok: boolean; session: SinglePlayerSession }>("/api/single-player/next-round", {
     method: "POST",
     body: JSON.stringify({ sessionId })
-  });
+  }, 12000);
 }
 
 export function fetchMatchmakingState() {
